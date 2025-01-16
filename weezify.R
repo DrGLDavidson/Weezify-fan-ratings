@@ -11,12 +11,15 @@ library(tidyverse)
 library(plyr)
 
 
-df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatings.csv", header =TRUE) #dataframe with song names, bundles and rankings.
+df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings.csv", header =TRUE) #dataframe with song names, bundles and rankings.
 
+df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_2025-01-16.csv", header =TRUE) #dataframe with lots more headers
 # check data
 names(df1)
 head(df1)
 unique(df1$bundle)
+
+
 
 # cleanup values
 
@@ -26,6 +29,37 @@ df1<-df1 %>%
   mutate(bundle = str_replace(bundle, "&", "and"))
 
 unique(df1$bundle)
+
+#filter by 
+
+# values for Type
+unique(df1$Type)
+
+
+df1$Type<-make_clean_names(df1$Type, allow_dupes = TRUE)
+
+unique(df1$Type)
+uniqueType<-unique(df1$Type)
+uniqueType<-as.data.frame((uniqueType))
+path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings/output'
+write.csv(uniqueType, file.path(path_out,'uniqueType.csv'))
+
+# histogram to visualise frequency of fan rating counts
+hist(df1$fanRatingCount, breaks=400,  xlim=c(0,80), ylim=c(0,400))
+
+df1b<-df1%>%
+  filter(Type=="full" | Type=="full_song" | Type=="full_song_acoustic" | Type=="acoustic_full_song" | Type=="acoustic_demo") #gives 831 observations (demos)
+
+hist(df1b$fanRatingCount, breaks=400,  xlim=c(0,60), ylim=c(0,100))
+
+# filter out fan rating count >3
+df1c<-df1b%>%
+  filter(fanRatingCount > 3)  #790 demos
+
+#filter only by fan rating count >5
+
+df1d<-df1%>%
+  filter(fanRatingCount > 5)  #1310 demos
 
 # summarySE() function to extract means and SE ###
 
@@ -66,7 +100,7 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 }
 
 # means and error
-means <- summarySE(df1, measurevar="fanRating", groupvars="bundle")
+means <- summarySE(df1c, measurevar="fanRating", groupvars="bundle") #change to appropriate dataframe 
 means
 
 colnames(means)[colnames(means) == "fanRating"] <- "averageFanRating"
@@ -76,11 +110,16 @@ colnames(means)[colnames(means) == "se"] <- "standardError"
 colnames(means)[colnames(means) == "ci"] <- "confidenceInterval"
 
 # This saves an csv of the averages (means) and error of fan ratings across songs per bundle. 
-path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings'
+path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings/output'
 write.csv(means, file.path(path_out,'weezifyFanRatingsSummary.csv'))
 
-tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatingBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
-ggplot(df1, aes(x = bundle, y = fanRating, color = bundle)) +
+write.csv(means, file.path(path_out,'weezifyFanRatingsSummary_filtered.csv'))
+
+
+write.csv(means, file.path(path_out,'weezifyFanRatingsSummary_filteredByCount.csv'))
+
+tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/weezifyRatingBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
+ggplot(df2, aes(x = bundle, y = fanRating, color = bundle)) +
   geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 1) +
   geom_boxplot(alpha = 0.8, outlier.shape = NA) + #outlier.shape = NA otherwise outliers are duplicated data points on plot
   geom_pointrange(data = means, aes(y = averageFanRating, ymin = averageFanRating - standardError, ymax = averageFanRating + standardError),
@@ -111,10 +150,79 @@ ggplot(df1, aes(x = bundle, y = fanRating, color = bundle)) +
     "#ED1B33", "lightgrey", "darkblue"
   ))
 dev.off()
+# filtered plots
+# by full type and count > 3
 
+tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/weezifyRatingBoxplots_filtered.tiff", width = 12, height = 9, units = 'in', res = 300)
+ggplot(df1c, aes(x = bundle, y = fanRating, color = bundle)) +
+  geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 1) +
+  geom_boxplot(alpha = 0.8, outlier.shape = NA) + #outlier.shape = NA otherwise outliers are duplicated data points on plot
+  geom_pointrange(data = means, aes(y = averageFanRating, ymin = averageFanRating - standardError, ymax = averageFanRating + standardError),
+                  colour = "black", alpha = 1, size = 0.6) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    panel.border = element_rect(linetype = "solid", colour = "black", linewidth = 0.8),
+    legend.title = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 20), # Adjust title size here
+    axis.text.x = element_text(angle = 45, hjust = 0.95, vjust = 1.0),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 24),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14)
+  ) +
+  labs(
+    title = "Weezify Fan Ratings Across Bundles (filtered by type=full)",
+    x = "Bundle",
+    y = "Fan Rating"
+  ) +
+  guides(colour = guide_legend(override.aes = list(size = 16))) +
+  scale_color_manual(values = c(
+    "#C06E22", "#EFDD9F", "purple", "#577E43",
+    "#00ABE6", "#BECE30", "black", "darkgrey",
+    "#ED1B33", "lightgrey", "darkblue"
+  ))
+dev.off()
+
+# by rating count >5 only 
+
+tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/weezifyRatingBoxplots_filteredByCount.tiff", width = 12, height = 9, units = 'in', res = 300)
+ggplot(df1d, aes(x = bundle, y = fanRating, color = bundle)) +
+  geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 1) +
+  geom_boxplot(alpha = 0.8, outlier.shape = NA) + #outlier.shape = NA otherwise outliers are duplicated data points on plot
+  geom_pointrange(data = means, aes(y = averageFanRating, ymin = averageFanRating - standardError, ymax = averageFanRating + standardError),
+                  colour = "black", alpha = 1, size = 0.6) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    panel.border = element_rect(linetype = "solid", colour = "black", linewidth = 0.8),
+    legend.title = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 20), # Adjust title size here
+    axis.text.x = element_text(angle = 45, hjust = 0.95, vjust = 1.0),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 24),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14)
+  ) +
+  labs(
+    title = "Weezify Fan Ratings Across Bundles (filtered by rating count >5)",
+    x = "Bundle",
+    y = "Fan Rating"
+  ) +
+  guides(colour = guide_legend(override.aes = list(size = 16))) +
+  scale_color_manual(values = c(
+    "#C06E22", "#EFDD9F", "purple", "#577E43",
+    "#00ABE6", "#BECE30", "black", "darkgrey",
+    "#ED1B33", "lightgrey", "darkblue"
+  ))
+dev.off()
 ####sub bundles Black Room Green and Maladroit
-df2<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatings_original_filename.csv", header =TRUE) # dataframe with demo names, bundles, rankings, total fan raking, original songname and uuid.
-df3<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatings_BlackRoomGreenMaladroit.csv", header =TRUE) # original song names and bundles of BGM bundle
+df2<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_original_filename.csv", header =TRUE) # dataframe with demo names, bundles, rankings, total fan raking, original songname and uuid.
+df3<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_BlackRoomGreenMaladroit.csv", header =TRUE) # original song names and bundles of BGM bundle
 
 names(df2) # there are 894 less demos today (15th Jan 2025) than yesterday (either removed or perhaps filtered as I have view only permission)
 names(df3)
@@ -162,7 +270,7 @@ path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings'
 write.csv(meansBGM, file.path(path_out,'weezifyFanRatingsSummary_BGM.csv'))
 
 # boxplot 
-tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/BlackGreenMalWeezifyRatingBoxplots.tiff", width = 10, height = 9, units = 'in', res = 300)
+tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/BlackGreenMalWeezifyRatingBoxplots.tiff", width = 10, height = 9, units = 'in', res = 300)
 ggplot(df4, aes(x = bundle.x, y = fanRating, color = bundle.x)) +
   geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 2) +  
   geom_boxplot(alpha = 0.8, outlier.shape = NA) +  # Removed outliers from boxplot
@@ -196,7 +304,7 @@ dev.off()
 df4$bundle.x <- as.factor(df4$bundle.x)
 
 # boxplot with colour gradient of fan rating count for BGM sub-bundles
-tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/BlackGreenMalWeezifyTotalRatingBoxplots.tiff", width = 10, height = 9, units = 'in', res = 300)
+tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/BlackGreenMalWeezifyTotalRatingBoxplots.tiff", width = 10, height = 9, units = 'in', res = 300)
 ggplot(df4, aes(x = bundle.x, y = fanRating, color = fanRatingCount)) +
   geom_boxplot(alpha = 0.8, aes(group = bundle.x), outlier.shape = NA) +  # Removed outliers from boxplot
   geom_point(position = position_jitter(width = 0.35), alpha = 0.7, size = 3) +  
@@ -239,11 +347,11 @@ ggplot(df4, aes(x = bundle.x, y = fanRating, color = fanRatingCount)) +
   colnames(meansFRC)[colnames(meansFRC) == "ci"] <- "confidenceInterval"
   
   # This saves an csv of the averages (means) and error of fan ratings across songs per sub-bundle. 
-  path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings'
+  path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings/output'
   write.csv(meansBGM, file.path(path_out,'weezifyFanRatingCountSummary.csv'))
   
 # fan rating count 
-  tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatingCountBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
+  tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/weezifyRatingCountBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
   ggplot(df2, aes(x = bundle, y = fanRatingCount, color = bundle)) +
     geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 1) +  
     geom_boxplot(alpha = 0.8, outlier.shape = NA) +  
@@ -296,7 +404,7 @@ ggplot(df4, aes(x = bundle.x, y = fanRating, color = fanRatingCount)) +
   
  df2b<-df2[-1126,] 
  
-  tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/weezifyRatingwithCountBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
+  tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/weezifyRatingwithCountBoxplots.tiff", width = 12, height = 9, units = 'in', res = 300)
   ggplot(df2b, aes(x = bundle, y = fanRating, color = fanRatingCount)) +
         geom_boxplot(alpha = 0.8, outlier.shape = NA) +  
     geom_point(position = position_jitter(width = 0.2), alpha = 0.7, size = 1) +  
@@ -324,4 +432,28 @@ ggplot(df4, aes(x = bundle.x, y = fanRating, color = fanRatingCount)) +
     ) +
     scale_color_gradient(low = "#EDB58F", high = "#02307C")
   dev.off()
+
+  # why are there 900 less demos from 16th Jan? 
+  
+  df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings.csv", header =TRUE) #dataframe with song names, bundles and rankings.
+  
+  df1_16<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_2025-01-16.csv", header =TRUE) #dataframe with lots more headers
+
+  #cleanup song titles so they can be merged
+  
+  df1_16$title<-make_clean_names(df1_16$title) 
+  df1$title<-make_clean_names(df1$title) 
+  
+  dfx<- merge(df1, df1_16 , by = "title", all.x = TRUE) 
+
+  missing_demos<- dfx %>%
+    filter(is.na(bundle.y)) %>%
+    select(title, bundle.x, fanRating.x)
+  
+  tiff(file="F:/RWorkspace/GitHub/Weezify-fan-ratings/output/missingDemosHistogram.tiff", width = 6, height = 6, units = 'in', res = 300)
+  histMissing<-hist(missing_demos$fanRating.x)
+  dev.off()
+  
+  path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings/output'
+  write.csv(missing_demos, file.path(path_out,'missingDemosPublicSpreadsheet.csv'), row.names = FALSE)
   
