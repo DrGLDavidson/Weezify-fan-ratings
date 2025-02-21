@@ -14,6 +14,9 @@ library(plyr)
 df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings.csv", header =TRUE) #dataframe with song names, bundles and rankings.
 
 df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_2025-01-16.csv", header =TRUE) #dataframe with lots more headers
+
+df1<-read.csv("F:/RWorkspace/GitHub/Weezify-fan-ratings/data/weezifyRatings_2025-01-17.csv", header =TRUE) #dataframe with lots more headers and unfiltered
+
 # check data
 names(df1)
 head(df1)
@@ -30,11 +33,34 @@ df1<-df1 %>%
 
 unique(df1$bundle)
 
+#remove the people and piano
+
+df1<-df1%>%
+  filter(bundle=="EWBAITE" | bundle=="The_White_Years" | bundle=="Pre-Weezer" | bundle=="The_Green_Years" | bundle=="The_Pacific_Daydream_Black_Years" |
+           bundle=="The_Red-Raditude-Hurley_Years" | bundle=="The_Blue-Pinkerton_Years" |bundle=="The_Make_Believe_Years"|bundle=="Patrick_and_Rivers" |bundle=="Weezma" )
+
+unique(df1$bundle)
+
+#counts of Full song demo tracks per bundle that are <4* and <10 ratings
+
+#clean up type
+df1$Type<-make_clean_names(df1$Type, allow_dupes = TRUE)
+
+df1b<-df1%>%
+  filter(Type=="full_song" & fanRatingCount<10 & fanRating <4)
+  
+df1c<-df1b%>%  
+  dplyr::count(bundle)
+
+names(df1c)[names(df1c) == "n"] <- "totalTracks"  #rename columns
+
+path_out = 'F:/RWorkspace/GitHub/Weezify-fan-ratings/output'
+write.csv(df1c, file.path(path_out,'totalFullSongTracksPerBundleLessThan4StarAnd10Fanratings.csv'),row.names = FALSE)
+
 #filter by 
 
 # values for Type
 unique(df1$Type)
-
 
 df1$Type<-make_clean_names(df1$Type, allow_dupes = TRUE)
 
